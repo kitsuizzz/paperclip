@@ -862,6 +862,18 @@ describe("Secrets page layout", () => {
     });
   });
 
+  it("opens the replace value dialog from the row actions without opening the detail sheet", async () => {
+    mockSecretsApi.list.mockResolvedValue([makeCompanySecret()]);
+
+    await renderSecrets(container);
+    await click(findControl("Replace value"));
+
+    const dialog = openDialog();
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain("Replace value");
+    expect(detailsPanel()).toBeNull();
+  });
+
   it("merges company secrets and each-user definitions into the Secrets list", async () => {
     mockSecretsApi.list.mockResolvedValue([makeCompanySecret({ referenceCount: 0 })]);
     mockSecretsApi.listUserSecretDefinitions.mockResolvedValue([makeUserSecretDefinition()]);
