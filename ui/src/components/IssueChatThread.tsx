@@ -1419,7 +1419,7 @@ function IssueChatChainOfThought({
           ) : isActive ? (
             <>
               {allReasoningText ? (
-                <IssueChatReasoningPart text={allReasoningText} />
+                <IssueChatReasoningPart text={allReasoningText} active />
               ) : null}
               {toolParts.length > 0 ? (
                 <IssueChatRollingToolPart toolParts={toolParts} />
@@ -1497,7 +1497,21 @@ function IssueChatVerboseLiveReasoningPart({ text }: { text: string }) {
   );
 }
 
-function IssueChatReasoningPart({ text }: { text: string }) {
+function IssueChatReasoningPart({ text, active = false }: { text: string; active?: boolean }) {
+  // A settled chain of thought is only visible after the reader opens the
+  // activity panel, so show the provider's text instead of a one-line ticker.
+  if (!active) {
+    return (
+      <div className="flex gap-2 px-1" data-testid="issue-chat-reasoning-settled">
+        <div className="flex flex-col items-center pt-0.5">
+          <Brain className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+        </div>
+        <div className="min-w-0 flex-1 whitespace-pre-wrap text-(length:--text-compact) italic leading-5 text-muted-foreground/70">
+          {text}
+        </div>
+      </div>
+    );
+  }
   const lines = text.split("\n").filter((l) => l.trim());
   const lastLine = lines[lines.length - 1] ?? text.slice(-200);
   const prevRef = useRef(lastLine);

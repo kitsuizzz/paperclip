@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { IssueChatComment } from "@/lib/issue-chat-messages";
+import type { TranscriptEntry } from "@paperclipai/adapter-utils";
 import {
   commentsToTaskChatItems,
   formatTaskChatTimestamp,
 } from "./task-chat-adapter";
+import { transcriptToTaskChatItems } from "./transcript-adapter";
 
 describe("commentsToTaskChatItems", () => {
   it("preserves distinct human IDs, photos and viewer ownership, including after a profile refresh", () => {
@@ -334,5 +336,40 @@ describe("commentsToTaskChatItems", () => {
     if (item.kind !== "message") throw new Error("expected message item");
     expect(item.presentation).toBeUndefined();
     expect(item.metadata).toBeUndefined();
+  });
+});
+
+describe("transcriptToTaskChatItems reasoning", () => {
+  it("keeps the provider's full reasoning text for a settled run", () => {
+    const entries: TranscriptEntry[] = [{
+      kind: "thinking",
+      ts: "2026-11-24T21:08:37.000Z",
+      text: "Checking the deploy stamp\nThe build reports cf62a713.",
+      channel: "summary",
+    }];
+
+    const items = transcriptToTaskChatItems(entries, { runId: "run-1", running: false });
+    const thinking = items.find(item => item.kind === "thinking");
+
+    expect(thinking).toMatchObject({ kind: "thinking", collapsed: true });
+    if (thinking?.kind !== "thinking") throw new Error("expected thinking item");
+    expect(thinking.lines).toEqual([
+      "Checking the deploy stamp",
+      "The build reports cf62a713.",
+    ]);
+  });
+
+  it("keeps streaming reasoning expanded while the run is live", () => {
+    const entries: TranscriptEntry[] = [{
+      kind: "thinking",
+      ts: "2026-11-24T21:08:37.000Z",
+      text: "Reading the run log",
+      delta: true,
+    }];
+
+    const items = transcriptToTaskChatItems(entries, { runId: "run-1", running: true });
+    const thinking = items.find(item => item.kind === "thinking");
+
+    expect(thinking).toMatchObject({ kind: "thinking", collapsed: false, streaming: true });
   });
 });
