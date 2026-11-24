@@ -788,6 +788,7 @@ export function Secrets() {
   });
   const [createError, setCreateError] = useState<unknown>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
+  const [rotateSecret, setRotateSecret] = useState<CompanySecret | null>(null);
   const [rotateMode, setRotateMode] = useState<RotateMode>("value");
   const [rotateValue, setRotateValue] = useState("");
   const [rotateExternalRef, setRotateExternalRef] = useState("");
@@ -929,8 +930,8 @@ export function Secrets() {
     [createForm.providerConfigId, providerConfigs],
   );
   const selectedRotateProviderConfigs = useMemo(
-    () => providerConfigs.filter((config) => config.provider === selectedSecret?.provider),
-    [providerConfigs, selectedSecret?.provider],
+    () => providerConfigs.filter((config) => config.provider === rotateSecret?.provider),
+    [providerConfigs, rotateSecret?.provider],
   );
   const selectedRotateProviderConfig = useMemo(
     () => providerConfigs.find((config) => config.id === rotateProviderConfigId) ?? null,
@@ -1355,14 +1356,14 @@ export function Secrets() {
 
   const rotateMutation = useMutation({
     mutationFn: () => {
-      if (!selectedSecret) throw new Error("Select a secret first");
-      if (selectedSecret.managedMode === "external_reference" && rotateMode === "reference") {
-        return secretsApi.rotate(selectedSecret.id, {
-          externalRef: rotateExternalRef.trim() || selectedSecret.externalRef || undefined,
+      if (!rotateSecret) throw new Error("Select a secret first");
+      if (rotateSecret.managedMode === "external_reference" && rotateMode === "reference") {
+        return secretsApi.rotate(rotateSecret.id, {
+          externalRef: rotateExternalRef.trim() || rotateSecret.externalRef || undefined,
           providerConfigId: rotateProviderConfigId || null,
         });
       }
-      return secretsApi.rotate(selectedSecret.id, {
+      return secretsApi.rotate(rotateSecret.id, {
         value: rotateValue,
         providerConfigId: rotateProviderConfigId || null,
       });
@@ -1370,6 +1371,7 @@ export function Secrets() {
     onSuccess: (updated) => {
       pushToast({ title: "Value replaced", body: `${updated.name} is now on version ${updated.latestVersion}`, tone: "success" });
       setRotateOpen(false);
+      setRotateSecret(null);
       setRotateValue("");
       setRotateExternalRef("");
       setRotateProviderConfigId("");
@@ -1647,11 +1649,11 @@ export function Secrets() {
   }, [createForm.provider, createForm.providerConfigId, createOpen, providerConfigs]);
 
   useEffect(() => {
-    if (!rotateOpen || !selectedSecret) return;
+    if (!rotateOpen || !rotateSecret) return;
     setRotateProviderConfigId(
-      selectedSecret.providerConfigId ?? getDefaultProviderConfigId(providerConfigs, selectedSecret.provider),
+      rotateSecret.providerConfigId ?? getDefaultProviderConfigId(providerConfigs, rotateSecret.provider),
     );
-  }, [providerConfigs, rotateOpen, selectedSecret]);
+  }, [providerConfigs, rotateOpen, rotateSecret]);
 
   function openCreateVault(provider: SecretProvider = "local_encrypted") {
     setEditingVault(null);
@@ -1718,7 +1720,7 @@ export function Secrets() {
   }
 
   function openRotateSecret(secret: CompanySecret) {
-    openCompanySecret(secret);
+    setRotateSecret(secret);
     setRotateOpen(true);
     setRotateMode(
       secret.managedMode === "external_reference" && !secretSupportsExternalValueWrite(secret)
@@ -1760,7 +1762,7 @@ export function Secrets() {
   function renderRowActions(row: UnifiedSecretRow) {
     const name = row.kind === "company" ? row.secret.name : row.definition.name;
     return (
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -2576,7 +2578,7 @@ export function Secrets() {
                     <RefreshCw className="mr-1 h-3.5 w-3.5" />
                     {rotateActionLabel(selectedSecret)}
                   </Button>
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon-sm" aria-label={`More actions for ${selectedSecret.name}`}>
                         <MoreHorizontal className="h-4 w-4" />
@@ -3398,23 +3400,29 @@ export function Secrets() {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={rotateOpen} onOpenChange={setRotateOpen}>
+      <Dialog
+        open={rotateOpen}
+        onOpenChange={(open) => {
+          setRotateOpen(open);
+          if (!open) setRotateSecret(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {selectedSecret?.managedMode === "external_reference" && rotateMode === "reference"
+              {rotateSecret?.managedMode === "external_reference" && rotateMode === "reference"
                 ? "Change reference"
                 : "Replace value"}
             </DialogTitle>
             <DialogDescription>
-              {selectedSecret?.managedMode !== "external_reference"
+              {rotateSecret?.managedMode !== "external_reference"
                 ? "Agents get the new value from their next run. The old one is kept as an earlier version."
                 : rotateMode === "reference"
                   ? "Points Paperclip at a different secret in your vault. The value in the vault is not changed."
                   : "Writes the new value to the secret in your vault. Everything that reads that secret gets it, inside and outside Paperclip."}
             </DialogDescription>
           </DialogHeader>
-          {selectedSecret && secretSupportsExternalValueWrite(selectedSecret) ? (
+          {rotateSecret && secretSupportsExternalValueWrite(rotateSecret) ? (
             <Tabs value={rotateMode} onValueChange={(value) => setRotateMode(value as RotateMode)}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="value">Replace value</TabsTrigger>
@@ -3450,14 +3458,14 @@ export function Secrets() {
               </p>
             )}
           </div>
-          {selectedSecret?.managedMode === "external_reference" && rotateMode === "reference" ? (
+          {rotateSecret?.managedMode === "external_reference" && rotateMode === "reference" ? (
             <div>
               <label className="text-sm font-medium" htmlFor="rotate-ref">New ARN or path</label>
               <Input
                 id="rotate-ref"
                 value={rotateExternalRef}
                 onChange={(event) => setRotateExternalRef(event.target.value)}
-                placeholder={selectedSecret.externalRef ?? "Updated reference"}
+                placeholder={rotateSecret.externalRef ?? "Updated reference"}
                 className="font-mono text-xs"
               />
               <p className="mt-1 text-(length:--text-micro) text-muted-foreground">
@@ -3475,9 +3483,9 @@ export function Secrets() {
                 className="font-mono text-xs"
                 placeholder="Paste the new value"
               />
-              {selectedSecret?.managedMode === "external_reference" ? (
+              {rotateSecret?.managedMode === "external_reference" ? (
                 <p className="mt-1 text-(length:--text-micro) text-muted-foreground">
-                  Written to <code className="font-mono">{selectedSecret.externalRef}</code> in the provider.
+                  Written to <code className="font-mono">{rotateSecret.externalRef}</code> in the provider.
                 </p>
               ) : null}
             </div>
@@ -3495,13 +3503,13 @@ export function Secrets() {
               disabled={
                 rotateMutation.isPending ||
                 Boolean(rotateProviderBlockReason) ||
-                (selectedSecret?.managedMode === "external_reference" && rotateMode === "reference"
-                  ? !rotateExternalRef.trim() && !selectedSecret?.externalRef
+                (rotateSecret?.managedMode === "external_reference" && rotateMode === "reference"
+                  ? !rotateExternalRef.trim() && !rotateSecret?.externalRef
                   : !rotateValue)
               }
             >
               {rotateMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-              {selectedSecret?.managedMode === "external_reference" && rotateMode === "reference"
+              {rotateSecret?.managedMode === "external_reference" && rotateMode === "reference"
                 ? "Save reference"
                 : "Save new value"}
             </Button>
