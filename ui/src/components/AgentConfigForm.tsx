@@ -1874,13 +1874,18 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                     }
                     set!(nextValues);
                   } else {
-                    // Clear all adapter config and explicitly blank out model + effort/mode keys
-                    // so the old adapter's values don't bleed through via eff()
+                    // Switching back to the agent's saved harness must keep that
+                    // harness's stored configuration and runner choice. Clearing
+                    // them converts a working claude_local/engine=cli agent into
+                    // the native Runner ACPX profile on the next save.
+                    const restoringSavedAdapter = t === props.agent.adapterType;
                     setOverlay((prev) => ({
                       ...prev,
-                      adapterType: t,
-                      runner: ["codex_local", "claude_local", "opencode_local", "pi_local"].includes(t) ? "auto" : undefined,
-                      adapterConfig: {
+                      adapterType: restoringSavedAdapter ? undefined : t,
+                      runner: restoringSavedAdapter
+                        ? agentRunner(t)
+                        : ["codex_local", "claude_local", "opencode_local", "pi_local"].includes(t) ? "auto" : undefined,
+                      adapterConfig: restoringSavedAdapter ? {} : {
                         model:
                           t === "gemini_local"
                             ? DEFAULT_GEMINI_LOCAL_MODEL

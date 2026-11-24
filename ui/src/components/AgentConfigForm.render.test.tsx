@@ -716,6 +716,28 @@ describe("AgentConfigForm environment selector", () => {
     }
   });
 
+  it("keeps a saved claude_local engine and runner when switching harness away and back", async () => {
+    const result = await renderForm([], {
+      adapterType: "claude_local",
+      adapterConfig: { engine: "cli", model: "claude-opus-5-5" },
+    }, { showAdapterTypeField: true });
+    roots.push(result.root);
+
+    await clickElement(result.container.querySelector('[aria-label="Harness"]'));
+    await clickElement(document.querySelector('[role="option"][data-value="opencode_local"]'));
+    await flushReact();
+    await clickElement(result.container.querySelector('[aria-label="Harness"]'));
+    await clickElement(document.querySelector('[role="option"][data-value="claude_local"]'));
+    await flushReact();
+    await clickByText(result.container, "Save");
+
+    expect(result.onSave).toHaveBeenCalledTimes(1);
+    const patch = result.onSave.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(patch).toEqual({ runner: "legacy" });
+    expect(patch).not.toHaveProperty("adapterType");
+    expect(patch).not.toHaveProperty("adapterConfig");
+  });
+
   it.each(["codex_local", "paperclip_runner"])("keeps a saved %s runner during unrelated edits", async adapterType => {
     const adapterConfig = { model: "gpt-5.6-sol", ...(adapterType === "paperclip_runner" ? { provider: "codex", reasoningEffort: "high" } : { modelReasoningEffort: "high" }) };
     const result = await renderForm([], { adapterType, adapterConfig }, { showAdapterTypeField: true });
