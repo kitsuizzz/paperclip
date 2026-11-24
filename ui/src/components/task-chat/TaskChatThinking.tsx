@@ -31,33 +31,13 @@ export function TaskChatThinking({
     ? body ? `${baseLabel}…` : "Thinking…"
     : item.summaryLabel ?? (body ? baseLabel : "Thought");
 
-  if (body && !active) {
-    return (
-      <div
-        className={cn(
-          "flex min-w-0 items-start gap-1.5 px-1 py-0.5 text-xs font-normal text-muted-foreground",
-          rowClassName,
-        )}
-        data-testid="task-chat-thinking"
-        data-state="settled"
-      >
-        <span className="flex w-5 shrink-0 items-center justify-center">
-          <Brain
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
-            aria-hidden
-            data-testid="task-chat-thinking-icon"
-          />
-        </span>
-        <div className="min-w-0 flex-1" data-testid="task-chat-thinking-text">
-          <TaskChatReasoningSummary text={body} />
-        </div>
-      </div>
-    );
-  }
-
   if (!body) {
     return (
-      <div className={cn("-mx-1.5 flex min-w-0 items-center gap-2 px-1.5 py-0.5 text-xs font-normal text-muted-foreground", rowClassName)} data-testid="task-chat-thinking">
+      <div
+        className={cn("-mx-1.5 flex min-w-0 items-center gap-2 px-1.5 py-0.5 text-xs font-normal text-muted-foreground", rowClassName)}
+        data-testid="task-chat-thinking"
+        data-state={active ? "active" : "settled"}
+      >
         <span className="flex w-5 shrink-0 items-center justify-center">
           <Brain className={cn("h-3.5 w-3.5 shrink-0", active && "text-(--status-agent-running)")} aria-hidden data-testid="task-chat-thinking-icon" />
         </span>
@@ -67,7 +47,11 @@ export function TaskChatThinking({
   }
 
   return (
-    <div className="flex min-w-0 max-w-full flex-col overflow-hidden text-xs font-normal" data-testid="task-chat-thinking">
+    <div
+      className="flex min-w-0 max-w-full flex-col overflow-hidden text-xs font-normal"
+      data-testid="task-chat-thinking"
+      data-state={active ? "active" : "settled"}
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -78,9 +62,7 @@ export function TaskChatThinking({
         <span className="flex w-5 shrink-0 items-center justify-center">
           <Brain className={cn("h-3.5 w-3.5 shrink-0", active && "text-(--status-agent-running)")} aria-hidden data-testid="task-chat-thinking-icon" />
         </span>
-        {active ? (
-          <span className={cn("shrink-0", shimmer && "shimmer-text shimmer-text-muted")}>{label}</span>
-        ) : null}
+        <span className={cn("shrink-0", active && shimmer && "shimmer-text shimmer-text-muted")}>{label}</span>
         {!open ? (
           <span
             className="task-chat-collapsed-line-fade min-w-0 flex-1"
@@ -92,7 +74,10 @@ export function TaskChatThinking({
         <ChevronRight className={cn("tc-hover-disclosure-caret h-3 w-3 shrink-0 transition-[opacity,transform] group-hover/thinking:opacity-80 group-focus-visible/thinking:opacity-80", open ? "rotate-90 opacity-80" : "opacity-0")} aria-hidden />
       </button>
       {open ? (
-        <div className="task-chat-expanded-line-wrap ml-2.5 mt-1 min-w-0 max-w-full overflow-hidden border-l-2 border-border pl-2.5 text-xs font-normal text-muted-foreground">
+        <div
+          className="task-chat-expanded-line-wrap ml-2.5 mt-1 min-w-0 max-w-full overflow-hidden border-l-2 border-border pl-2.5 text-xs font-normal text-muted-foreground"
+          data-testid="task-chat-thinking-text"
+        >
           <TaskChatReasoningSummary text={body} streaming={active} />
         </div>
       ) : null}
